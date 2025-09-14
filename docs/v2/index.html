@@ -1,0 +1,323 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dark Mode Water Circuit Dashboard</title>
+  <style>
+    :root{
+      --bg:#0f1720; /* deep slate */
+      --panel:#0b1220; /* slightly lighter */
+      --accent:#10b981; /* green */
+      --warn:#f59e0b; /* amber */
+      --muted:#94a3b8;
+      --glass: rgba(255,255,255,0.03);
+      --card-radius:14px;
+      --gutter:20px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      color-scheme: dark;
+    }html,body{height:100%;margin:0;background:linear-gradient(180deg,#071018 0%, #0b1218 100%);}
+.app{
+  display:grid;
+  grid-template-columns: 360px 1fr;
+  gap:var(--gutter);
+  height:100vh;
+  padding:28px;
+  box-sizing:border-box;
+}
+
+/* left sidebar: status cards */
+.sidebar{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+  padding:18px;
+  background:linear-gradient(180deg,var(--panel), rgba(255,255,255,0.01));
+  border-radius:var(--card-radius);
+  box-shadow: 0 6px 20px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+  min-height:calc(100vh - 56px);
+}
+
+.logo{font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:6px}
+.card{
+  padding:16px;
+  border-radius:12px;
+  background:var(--glass);
+  box-shadow: 0 4px 10px rgba(2,6,23,0.6);
+}
+.node-title{font-weight:700;color:#e6eef6;margin-bottom:8px}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,0.02)}
+.stat-row:last-child{border-bottom:0}
+.stat-name{color:var(--muted);font-size:13px}
+.stat-value{font-weight:700;color:#e6eef6}
+
+.led{width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:8px;box-shadow:0 0 8px rgba(0,0,0,0.6)}
+.led.green{background:linear-gradient(180deg,#19d47a,#0bb86a);box-shadow:0 0 8px rgba(16,185,129,0.6)}
+.led.amber{background:linear-gradient(180deg,#ffd27a,#f59e0b);box-shadow:0 0 8px rgba(245,158,11,0.5)}
+.led.red{background:linear-gradient(180deg,#ff7b7b,#ef4444);box-shadow:0 0 12px rgba(239,68,68,0.45)}
+
+/* main drawing area */
+.board{
+  position:relative;
+  padding:28px;
+  border-radius:var(--card-radius);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), repeating-linear-gradient(-45deg, rgba(255,255,255,0.008) 0 1px, transparent 1px 40px);
+  overflow:hidden;
+  box-shadow: 0 8px 30px rgba(2,6,23,0.7);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.svg-wrap{width:100%;height:100%;min-height:720px}
+
+/* small info boxes inside board */
+.info-box{
+  position:absolute;padding:10px 12px;border-radius:10px;background:rgba(2,6,23,0.55);border:1px solid rgba(255,255,255,0.02);font-size:13px;color:var(--muted);
+  backdrop-filter: blur(4px);box-shadow:0 6px 18px rgba(2,6,23,0.6);
+}
+.info-box .label{display:block;font-weight:700;color:#e6eef6;margin-bottom:6px}
+
+.controls{display:flex;gap:10px;align-items:center}
+.btn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px 12px;border-radius:10px;color:var(--muted);cursor:pointer}
+.btn:active{transform:translateY(1px)}
+
+/* legend */
+.legend{position:absolute;left:32px;bottom:28px;color:var(--muted);font-size:13px;display:flex;gap:14px;align-items:center}
+.legend .item{display:flex;gap:8px;align-items:center}
+
+/* responsive */
+@media (max-width:980px){
+  .app{grid-template-columns:1fr;grid-auto-rows:auto}
+  .sidebar{order:2;min-height:auto}
+  .board{order:1}
+}
+
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">WATER-CIRCUIT • DARK DASH</div><!-- Node cards -->
+  <div class="card">
+    <div class="node-title">Node 1</div>
+    <div class="stat-row"><div><span class="led green"></span><span class="stat-name">Status</span></div><div class="stat-value">ONLINE</div></div>
+    <div class="stat-row"><div><span class="led amber"></span><span class="stat-name">Failure</span></div><div class="stat-value" id="n1-failure">1%</div></div>
+    <div class="stat-row"><div><span class="led green"></span><span class="stat-name">Speed</span></div><div class="stat-value" id="n1-speed">5 / min</div></div>
+  </div>
+
+  <div class="card">
+    <div class="node-title">Node 2</div>
+    <div class="stat-row"><div><span class="led green"></span><span class="stat-name">Status</span></div><div class="stat-value">ONLINE</div></div>
+    <div class="stat-row"><div><span class="led green"></span><span class="stat-name">Failure</span></div><div class="stat-value" id="n2-failure">2%</div></div>
+    <div class="stat-row"><div><span class="led amber"></span><span class="stat-name">Speed</span></div><div class="stat-value" id="n2-speed">3 / min</div></div>
+  </div>
+
+  <div class="card">
+    <div class="node-title">Node 3</div>
+    <div class="stat-row"><div><span class="led green"></span><span class="stat-name">Status</span></div><div class="stat-value">ONLINE</div></div>
+    <div class="stat-row"><div><span class="led amber"></span><span class="stat-name">Temperature</span></div><div class="stat-value" id="n3-temp">18°C</div></div>
+    <div class="stat-row"><div><span class="led green"></span><span class="stat-name">Pump</span></div><div class="stat-value" id="n3-pump">ON</div></div>
+  </div>
+
+  <div style="flex:1"></div>
+
+  <div style="display:flex;gap:10px;align-items:center;justify-content:space-between">
+    <div style="color:var(--muted);font-size:13px">Last updated: <span id="last-update">--</span></div>
+    <div class="controls">
+      <button class="btn" id="refresh">Refresh</button>
+      <button class="btn" id="simulate">Simulate</button>
+    </div>
+  </div>
+</aside>
+
+<main class="board">
+  <div class="svg-wrap" id="svgWrap">
+    <!-- We'll use inline SVG to draw stylized pipes, pumps, fan and reservoirs -->
+    <svg viewBox="0 0 1400 820" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="waterGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#47b5ff" stop-opacity="0.95" />
+          <stop offset="100%" stop-color="#1e90ff" stop-opacity="0.6" />
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- pipes (stroke-only paths) -->
+      <g id="pipes" fill="none" stroke="#9fb7d6" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" opacity="0.95">
+        <!-- left vertical loop -->
+        <path d="M240 130 C260 120, 280 120, 560 120 L760 120 C980 120, 980 240, 980 240 L980 380" />
+        <path d="M240 130 L240 640 C240 690, 360 700, 360 700 L580 700 C760 700, 760 520, 760 520 L760 480"/>
+
+        <!-- right reservoir loop -->
+        <path d="M760 480 L1100 480 C1180 480, 1180 600, 1100 600 L760 600" />
+
+        <!-- top connection -->
+        <path d="M980 240 C1080 180, 1130 120, 1220 120"/>
+      </g>
+
+      <!-- water inside pipes (animated stroke-dashoffset) -->
+      <g id="flow" stroke="url(#waterGrad)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9">
+        <path id="flowPath1" d="M240 130 C260 120, 280 120, 560 120 L760 120 C980 120, 980 240, 980 240 L980 380" stroke-dasharray="1800" stroke-dashoffset="0"/>
+        <path id="flowPath2" d="M240 130 L240 640 C240 690, 360 700, 360 700 L580 700 C760 700, 760 520, 760 520 L760 480" stroke-dasharray="2200" stroke-dashoffset="0"/>
+        <path id="flowPath3" d="M760 480 L1100 480 C1180 480, 1180 600, 1100 600 L760 600" stroke-dasharray="1400" stroke-dashoffset="0"/>
+        <path id="flowPath4" d="M980 240 C1080 180, 1130 120, 1220 120" stroke-dasharray="600" stroke-dashoffset="0"/>
+      </g>
+
+      <!-- reservoirs -->
+      <g id="reservoirs" fill="rgba(255,255,255,0.02)" stroke="#6ea7d6" stroke-width="3">
+        <rect x="500" y="220" width="120" height="80" rx="8" fill="url(#waterGrad)" opacity="0.12"/>
+
+        <rect x="760" y="520" width="320" height="160" rx="18" fill="rgba(30,60,110,0.06)"/>
+        <!-- little waves inside big reservoir -->
+        <path d="M780 600 C820 582, 860 618, 900 600 C940 582, 980 618, 1020 600" stroke="url(#waterGrad)" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </g>
+
+      <!-- fan: top-right -->
+      <g id="fan" transform="translate(1140,80)">
+        <circle cx="0" cy="0" r="36" fill="rgba(255,255,255,0.02)" stroke="#9fb7d6" stroke-width="3"/>
+        <g id="fan-blades">
+          <path d="M0 0 L26 -6 A26 26 0 0 1 12 18 Z" fill="#8ecfff" opacity="0.95" />
+          <path d="M0 0 L18 -22 A26 26 0 0 1 -8 -4 Z" fill="#7ed1ff" opacity="0.9" />
+          <path d="M0 0 L-26 -6 A26 26 0 0 1 -12 18 Z" fill="#6ec8ff" opacity="0.85" />
+          <path d="M0 0 L-18 22 A26 26 0 0 1 8 4 Z" fill="#5fbfff" opacity="0.8" />
+        </g>
+      </g>
+
+      <!-- pump: left-middle -->
+      <g id="pumpA" transform="translate(420,260)">
+        <circle cx="0" cy="0" r="28" fill="rgba(255,255,255,0.02)" stroke="#9fb7d6" stroke-width="3"/>
+        <g id="pumpA-blade">
+          <rect x="-4" y="-18" width="8" height="36" rx="3" fill="#8ecfff" />
+        </g>
+      </g>
+
+      <!-- pump: bottom-right -->
+      <g id="pumpB" transform="translate(900,660)">
+        <circle cx="0" cy="0" r="28" fill="rgba(255,255,255,0.02)" stroke="#9fb7d6" stroke-width="3"/>
+        <g id="pumpB-blade">
+          <rect x="-4" y="-18" width="8" height="36" rx="3" fill="#8ecfff" />
+        </g>
+      </g>
+
+      <!-- small pin points -->
+      <g fill="#0ff" opacity="0.9">
+        <circle cx="240" cy="130" r="4" fill="#10b981" />
+        <circle cx="980" cy="240" r="4" fill="#10b981" />
+        <circle cx="760" cy="480" r="4" fill="#10b981" />
+      </g>
+    </svg>
+  </div>
+
+  <!-- info boxes positioned to mirror the original image composition -->
+  <div class="info-box" style="right:36px;top:70px;width:160px;">
+    <div class="label">Fan</div>
+    <div><span class="led green" id="fan-led"></span><strong style="color:#e6eef6">Status:</strong> <span id="fan-status">OK</span></div>
+    <div style="margin-top:6px;color:var(--muted);font-size:13px">Valve: <strong id="valve-state">OPEN</strong></div>
+  </div>
+
+  <div class="info-box" style="left:520px;top:56px;width:140px;">
+    <div class="label">RPM</div>
+    <div style="font-weight:700;color:#e6eef6" id="rpm-display">580</div>
+    <div style="color:var(--muted);font-size:13px">Status: <span id="rpm-status">OK</span></div>
+  </div>
+
+  <div class="info-box" style="right:140px;bottom:80px;width:140px;">
+    <div class="label">Pump B</div>
+    <div><span class="led green" id="pB-led"></span>RPM: <strong id="pB-rpm">1000</strong></div>
+    <div style="color:var(--muted);font-size:13px">Status: <span id="pB-status">OK</span></div>
+  </div>
+
+  <div class="legend">
+    <div class="item"><span class="led green"></span>Online</div>
+    <div class="item"><span class="led amber"></span>Warning</div>
+    <div class="item"><span class="led red"></span>Fault</div>
+  </div>
+</main>
+
+  </div>  <script>
+    // small interactions & animation
+    const lastUpdate = document.getElementById('last-update');
+    const refreshBtn = document.getElementById('refresh');
+    const simulateBtn = document.getElementById('simulate');
+
+    const rpmDisplay = document.getElementById('rpm-display');
+    const fanBlades = document.getElementById('fan-blades');
+    const pumpA = document.getElementById('pumpA-blade');
+    const pumpB = document.getElementById('pumpB-blade');
+
+    const flow1 = document.getElementById('flowPath1');
+    const flow2 = document.getElementById('flowPath2');
+    const flow3 = document.getElementById('flowPath3');
+    const flow4 = document.getElementById('flowPath4');
+
+    const pB_rpm = document.getElementById('pB-rpm');
+
+    function nowStamp(){
+      const d=new Date();
+      return d.toLocaleTimeString();
+    }
+    lastUpdate.textContent = nowStamp();
+
+    // animate rotation for fan and pumps
+    let fanAngle = 0, pAangle=0, pBangle=0;
+    let fanSpeed = 0.75; // multiplier
+    let running = true;
+
+    function animate(){
+      fanAngle += 12*fanSpeed;
+      pAangle += 8*fanSpeed;
+      pBangle += 10*fanSpeed;
+      fanBlades.setAttribute('transform', `rotate(${fanAngle})`);
+      pumpA.setAttribute('transform', `rotate(${pAangle})`);
+      pumpB.setAttribute('transform', `rotate(${pBangle})`);
+
+      // water stroke offset to create flow illusion
+      const t = performance.now()/10;
+      flow1.style.strokeDashoffset = (t* -0.7) % 2000;
+      flow2.style.strokeDashoffset = (t* -0.4) % 2600;
+      flow3.style.strokeDashoffset = (t* -0.6) % 1600;
+      flow4.style.strokeDashoffset = (t* -1.0) % 800;
+
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+
+    function refreshData(){
+      // simple random-ish updates
+      const rpm = 480 + Math.round(Math.random()*320);
+      rpmDisplay.textContent = rpm;
+      pB_rpm.textContent = 900 + Math.round(Math.random()*300);
+      document.getElementById('n1-failure').textContent = (Math.random()*3).toFixed(1)+'%';
+      document.getElementById('n2-failure').textContent = (Math.random()*4).toFixed(1)+'%';
+      document.getElementById('n1-speed').textContent = (3+Math.round(Math.random()*4))+' / min';
+      document.getElementById('n2-speed').textContent = (2+Math.round(Math.random()*3))+' / min';
+      document.getElementById('n3-temp').textContent = (16 + Math.round(Math.random()*6)) + '°C';
+      lastUpdate.textContent = nowStamp();
+    }
+
+    refreshBtn.addEventListener('click',refreshData);
+    simulateBtn.addEventListener('click',()=>{
+      // toggle fan speed and pump speed
+      fanSpeed = fanSpeed > 0 ? (fanSpeed===0.75?2.2:0.75) : 0.75;
+      simulateBtn.textContent = fanSpeed>1? 'High speed': 'Simulate';
+    });
+
+    // auto-refresh every 6s
+    setInterval(refreshData,6000);
+
+    // keyboard quick toggles
+    document.addEventListener('keydown',(e)=>{
+      if(e.key==='f'){
+        fanSpeed = fanSpeed?0:1.2;
+      }
+      if(e.key==='r') refreshData();
+    });
+  </script></body>
+</html>
