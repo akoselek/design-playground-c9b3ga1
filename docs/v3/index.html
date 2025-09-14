@@ -1,1 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Flat • Stylish IoT Dashboard</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --panel:#ffffff;
+      --muted:#98a0b3;
+      --accent:#4f46e5;
+      --accent-2:#06b6d4;
+      --danger:#ef4444;
+      --glass: rgba(255,255,255,0.6);
+      --shadow: 0 8px 24px rgba(16,24,40,0.06);
+      --radius:12px;
+      --mono: 'Inter', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+      --ui: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--ui);
+      background:linear-gradient(180deg,var(--bg),#eef2ff 120%);
+      color:#0f172a;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:28px;
+    }
 
+    /* layout */
+    .app{
+      display:grid;
+      grid-template-columns: 320px 1fr 360px;
+      gap:24px;
+      align-items:start;
+      max-width:1400px;
+      margin:0 auto;
+    }
+    .card{
+      background:var(--panel);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:18px;
+    }
+    header.app-header{
+      grid-column:1/-1;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:6px;
+    }
+    .brand{
+      display:flex;align-items:center;gap:12px
+    }
+    .logo{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px}
+    h1{font-size:18px;margin:0}
+    .sub{font-size:12px;color:var(--muted)}
+
+    /* sidebar */
+    .sidebar .card{padding:16px}
+    .controls-row{display:flex;gap:8px;align-items:center}
+    .btn{background:transparent;border:1px solid rgba(15,23,42,0.06);padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;border:0}
+    .small{font-size:12px;padding:6px 10px;border-radius:8px}
+    .muted{color:var(--muted);font-size:13px}
+
+    /* search */
+    .search{display:flex;gap:8px;align-items:center;margin-top:12px}
+    .search input{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(15,23,42,0.04)}
+
+    /* devices grid (center) */
+    .devices-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .device{
+      padding:16px;border-radius:12px;position:relative;overflow:hidden;transition:transform .18s ease,box-shadow .18s ease;
+      border:1px solid rgba(15,23,42,0.03);
+    }
+    .device:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(16,24,40,0.08)}
+    .device .title{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .device .meta{font-size:12px;color:var(--muted);margin-top:6px}
+    .device .big{font-weight:700;font-size:20px;margin-top:10px}
+
+    /* power switch */
+    .power{display:inline-flex;align-items:center;gap:8px}
+    .toggle{width:44px;height:26px;border-radius:999px;background:#e6e9f2;padding:3px;display:flex;align-items:center;cursor:pointer}
+    .knob{width:20px;height:20px;border-radius:50%;background:white;box-shadow:0 6px 18px rgba(16,24,40,0.12);transition:transform .18s cubic-bezier(.2,.9,.3,1)}
+    .toggle.on{background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+    .toggle.on .knob{transform:translateX(18px)}
+
+    /* mini sparkline */
+    .spark{width:100%;height:40px;margin-top:12px;border-radius:8px;background:linear-gradient(180deg,rgba(99,102,241,0.06),transparent)}
+
+    /* device footer */
+    .device-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+    .chip{background:rgba(15,23,42,0.03);padding:6px 8px;border-radius:999px;font-size:12px}
+
+    /* right column (details/logs) */
+    .panel-title{display:flex;justify-content:space-between;align-items:center}
+    .log-list{max-height:420px;overflow:auto;margin-top:12px;padding-right:6px}
+    .log-item{padding:8px;border-radius:8px;margin-bottom:8px;background:linear-gradient(90deg,transparent,rgba(15,23,42,0.02));font-size:13px}
+
+    /* forms & modals */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:grid;place-items:center}
+    .modal{width:680px;background:var(--panel);border-radius:14px;padding:18px}
+    .row{display:flex;gap:12px}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(15,23,42,0.06)}
+
+    /* utility */
+    .muted-2{color:#94a3b8}
+    .small-txt{font-size:12px}
+
+    /* responsive */
+    @media (max-width:1100px){
+      .app{grid-template-columns:1fr;}
+      .app header.app-header{grid-column:1/-1}
+      .devices-grid{grid-template-columns:repeat(2,1fr)}
+    }
+    @media (max-width:640px){
+      .devices-grid{grid-template-columns:repeat(1,1fr)}
+    }
+
+    /* microcopy: crowded look */
+    .overwhelming{display:flex;flex-wrap:wrap;gap:8px}
+    .mini{padding:6px 8px;border-radius:999px;background:linear-gradient(180deg,#fff,#f6f7fb);border:1px solid rgba(15,23,42,0.03);font-size:12px}
+
+    /* delight */
+    .glow-pulse{position:absolute;right:-80px;top:-80px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle at center, rgba(99,102,241,0.14), transparent 40%);filter:blur(20px);pointer-events:none;opacity:.95}
+
+    footer.hint{grid-column:1/-1;margin-top:8px;text-align:center;color:var(--muted);font-size:13px}
+
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo">IO</div>
+        <div>
+          <h1>Flat • Stylish IoT</h1>
+          <div class="sub">Pack every control — add, remove, configure, and control devices</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="muted small-txt">Simulated environment • local persistence</div>
+        <button class="btn" id="exportBtn">Export JSON</button>
+        <button class="btn primary" id="addGlobalBtn">+ Add Device</button>
+      </div>
+    </header>
+
+    <!-- LEFT: Sidebar -->
+    <aside class="sidebar card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:700">Overview</div>
+          <div class="muted">Devices, groups & quick controls</div>
+        </div>
+        <div class="overwhelming">
+          <div class="mini">Total: <span id="totalDevices">0</span></div>
+          <div class="mini">Online: <span id="onlineDevices">0</span></div>
+        </div>
+      </div>
+
+      <div class="search">
+        <input id="q" placeholder="Search devices or type..." />
+        <button class="btn small" id="clearQ">Clear</button>
+      </div>
+
+      <div style="margin-top:12px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <button class="btn small" id="filterAll">All</button>
+          <button class="btn small" id="filterOn">On</button>
+          <button class="btn small" id="filterOff">Off</button>
+        </div>
+        <div style="margin-top:10px">
+          <div class="muted">Quick groups</div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button class="btn small">Lights</button>
+            <button class="btn small">Thermostats</button>
+            <button class="btn small">Cameras</button>
+            <button class="btn small">Custom</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div class="muted">Quick actions</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn" id="allOn">All ON</button>
+          <button class="btn" id="allOff">All OFF</button>
+        </div>
+      </div>
+
+      <div style="margin-top:16px">
+        <div class="muted">Device presets</div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-direction:column">
+          <button class="btn" id="presetLight">Add Light</button>
+          <button class="btn" id="presetTherm">Add Thermostat</button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- CENTER: Devices -->
+    <main>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:700">Devices</div>
+            <div class="muted">Grid, drag to reorder, click to open details</div>
+          </div>
+          <div class="muted small-txt">Tip: Double-click a device to toggle.</div>
+        </div>
+
+        <div style="height:12px"></div>
+        <div id="devices" class="devices-grid"></div>
+      </div>
+
+      <div style="height:12px"></div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><strong>Command Console</strong><div class="muted">Send a command to many devices quickly</div></div>
+          <div><button class="btn" id="sendPing">Ping All</button></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+          <input id="cmdInput" placeholder="e.g. setBrightness: 60" />
+          <button class="btn primary" id="sendCmd">Send</button>
+        </div>
+        <div id="consoleOut" style="margin-top:12px;max-height:120px;overflow:auto;padding:8px;border-radius:8px;border:1px dashed rgba(15,23,42,0.03);"></div>
+      </div>
+    </main>
+
+    <!-- RIGHT: Details / Logs -->
+    <aside class="card">
+      <div class="panel-title">
+        <div><strong>Activity</strong><div class="muted">Recent device events</div></div>
+        <div class="muted small-txt">Live • simulated</div>
+      </div>
+      <div id="logs" class="log-list"></div>
+
+      <div style="margin-top:12px">
+        <div class="muted">Selected device</div>
+        <div id="selectedInfo" style="margin-top:8px;padding:10px;border-radius:10px;background:linear-gradient(180deg,transparent,rgba(15,23,42,0.02))">None</div>
+      </div>
+
+    </aside>
+
+    <footer class="hint">Made with ♥ — try adding, editing, configuring and controlling devices. State is persisted in your browser (localStorage).</footer>
+  </div>
+
+  <!-- Modals (in DOM but hidden) -->
+  <div id="modalRoot" style="display:none"></div>
+
+  <script>
+    /* === Lightweight IoT Dashboard: single-file app === */
+
+    // utilities
+    const uid = (n=6)=>Math.random().toString(36).slice(2,2+n);
+    const $ = sel => document.querySelector(sel);
+    const el = (tag, props={}, children=[])=>{const e=document.createElement(tag);Object.assign(e,props);children.forEach(c=>typeof c==='string'?e.appendChild(document.createTextNode(c)):e.appendChild(c));return e}
+
+    // initial demo devices
+    const demo = [
+      {id:'dev-'+uid(4),name:'Living Room Light',type:'light',room:'Living Room',on:true,brightness:82,logs:[],metrics:randSeries()},
+      {id:'dev-'+uid(4),name:'Hallway Camera',type:'camera',room:'Hallway',on:true,streaming:true,logs:[],metrics:randSeries(18,40)},
+      {id:'dev-'+uid(4),name:'Bedroom Thermostat',type:'thermostat',room:'Bedroom',on:true,temp:22.4,mode:'auto',logs:[],metrics:randSeries(20,26)},
+      {id:'dev-'+uid(4),name:'Garage Door',type:'switch',room:'Garage',on:false,logs:[],metrics:randSeries(0,1)}
+    ];
+
+    function randSeries(min=10,max=90,len=28){
+      const out=[];let v=(min+max)/2;for(let i=0;i<len;i++){v = Math.max(min,Math.min(max, v + (Math.random()-0.5)*8)); out.push(Math.round(v)); }return out;
+    }
+
+    // storage
+    const STORAGE_KEY = 'iot-flat-devices-v1';
+    function load(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : demo;
+      }catch(e){return demo}
+    }
+    function save(devs){localStorage.setItem(STORAGE_KEY,JSON.stringify(devs))}
+
+    // state
+    let devices = load();
+    let selected = null;
+    renderCounts();
+
+    // render devices grid
+    function renderDevices(filterQ=''){
+      const container = $('#devices'); container.innerHTML='';
+      const q = filterQ.trim().toLowerCase();
+      devices.forEach((d,idx)=>{
+        if(q && !(d.name.toLowerCase().includes(q) || d.type.toLowerCase().includes(q) || (d.room||'').toLowerCase().includes(q))) return;
+        const card = el('div',{className:'device card',draggable:true});
+        card.dataset.id = d.id;
+
+        // glow
+        const glow = el('div',{className:'glow-pulse'});
+        card.appendChild(glow);
+
+        const title = el('div',{className:'title'});
+        title.appendChild(el('div',{},[el('div',{innerText:d.name}), el('div',{className:'muted',innerText:d.room||d.type})]));
+        const powerWrap = el('div',{className:'power'});
+        const toggle = el('div',{className:'toggle '+(d.on?'on':''),title:'Toggle power'});
+        const knob = el('div',{className:'knob'});
+        toggle.appendChild(knob);
+        powerWrap.appendChild(toggle);
+        title.appendChild(powerWrap);
+        card.appendChild(title);
+
+        // stats
+        card.appendChild(el('div',{className:'big',innerText:(d.type==='thermostat' ? (d.temp+'°C') : (d.type==='camera' ? (d.streaming? 'Streaming':'Idle') : (d.type==='light' ? d.brightness+'%' : (d.on? 'Active':'Inactive'))))}));
+        card.appendChild(el('div',{className:'meta',innerText:`${d.type.toUpperCase()} • id: ${d.id}`}));
+
+        // sparkline canvas
+        const sbox = el('div',{className:'spark'});
+        const cnv = el('canvas'); cnv.width=300; cnv.height=40; sbox.appendChild(cnv);
+        card.appendChild(sbox);
+        drawSpark(cnv, d.metrics || []);
+
+        // footer
+        const footer = el('div',{className:'device-footer'});
+        footer.appendChild(el('div',{className:'chip',innerText: d.on? 'ON':'OFF'}));
+        const actions = el('div',{},[]);
+        const cfg = el('button',{className:'btn small',innerText:'Configure'});
+        const remove = el('button',{className:'btn small',innerText:'Remove'});
+        actions.appendChild(cfg); actions.appendChild(remove);
+        footer.appendChild(actions);
+        card.appendChild(footer);
+
+        // events
+        toggle.addEventListener('click',()=>{ toggleDevice(d.id); });
+        cfg.addEventListener('click',()=>{ openConfig(d.id); });
+        remove.addEventListener('click',()=>{ removeDevice(d.id); });
+        card.addEventListener('dblclick',()=>{ toggleDevice(d.id); });
+        card.addEventListener('click',(ev)=>{ if(ev.target.closest('button')) return; selectDevice(d.id); });
+
+        // drag and drop
+        card.addEventListener('dragstart',(e)=>{ e.dataTransfer.setData('text/plain', d.id); card.style.opacity=.6; });
+        card.addEventListener('dragend',(e)=>{ card.style.opacity=1; });
+        card.addEventListener('dragover',(e)=>{ e.preventDefault(); card.style.outline='2px dashed rgba(79,70,229,0.12)'; });
+        card.addEventListener('dragleave',()=>{ card.style.outline='none' });
+        card.addEventListener('drop',(e)=>{ 
+          e.preventDefault(); card.style.outline='none'; const from = e.dataTransfer.getData('text/plain'); const to = d.id; reorder(from,to);
+        });
+
+        container.appendChild(card);
+      });
+      renderCounts();
+    }
+
+    function drawSpark(cnv, data){
+      const ctx = cnv.getContext('2d');
+      ctx.clearRect(0,0,cnv.width,cnv.height);
+      if(!data || data.length===0) return;
+      const w=cnv.width, h=cnv.height;const max=Math.max(...data), min=Math.min(...data);
+      ctx.beginPath();
+      data.forEach((v,i)=>{
+        const x = (i/(data.length-1))*(w-6)+3;
+        const y = h - ((v-min)/(max-min||1))*(h-8)-4;
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.strokeStyle='rgba(79,70,229,0.9)'; ctx.lineWidth=2; ctx.stroke();
+      // fill
+      ctx.lineTo(w, h); ctx.lineTo(0,h); ctx.closePath();
+      const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'rgba(99,102,241,0.12)'); g.addColorStop(1,'rgba(99,102,241,0)');
+      ctx.fillStyle=g; ctx.fill();
+    }
+
+    // device operations
+    function toggleDevice(id){ devices = devices.map(d => d.id===id ? ({...d, on:!d.on, logs: [...(d.logs||[]), {ts:Date.now(),msg: (d.on? 'powered off':'powered on')}]}) : d); save(devices); renderDevices($('#q').value); addLog(`Toggled ${id}`); renderCounts(); updateSelected(); }
+    function removeDevice(id){ if(!confirm('Remove device? \nThis will erase its logs.')) return; devices = devices.filter(d=>d.id!==id); save(devices); renderDevices($('#q').value); addLog(`Removed ${id}`); if(selected===id) selected=null; updateSelected(); }
+    function openConfig(id){ const d = devices.find(x=>x.id===id); if(!d) return; showModal(renderConfigForm(d)); }
+    function addDevice(data){ devices.unshift(data); save(devices); renderDevices($('#q').value); addLog(`Added ${data.id} (${data.name})`); }
+    function reorder(fromId,toId){ const from = devices.findIndex(d=>d.id===fromId); const to = devices.findIndex(d=>d.id===toId); if(from<0||to<0) return; const [m] = devices.splice(from,1); devices.splice(to,0,m); save(devices); renderDevices($('#q').value); }
+
+    // select
+    function selectDevice(id){ selected = id; updateSelected(); }
+    function updateSelected(){ const out = $('#selectedInfo'); if(!selected){ out.innerHTML='None'; return; } const d = devices.find(x=>x.id===selected); if(!d){ out.innerHTML='None'; return; }
+      out.innerHTML = `<div style="font-weight:700">${d.name}</div><div class='muted' style='margin-top:4px'>${d.type} • ${d.room||'—'}</div><div style='margin-top:10px'>${JSON.stringify(d, null, 2).replace(/\n/g,'<br>').replace(/\s/g,'&nbsp;')}</div>`;
+    }
+
+    // counts/logs
+    function renderCounts(){ $('#totalDevices').innerText = devices.length; $('#onlineDevices').innerText = devices.filter(d=>d.on).length; }
+    function addLog(txt){ const logs = $('#logs'); const id = 'l-'+uid(5); const li = el('div',{className:'log-item',innerText:`${new Date().toLocaleTimeString()} • ${txt}`}); logs.prepend(li); while(logs.childElementCount>80) logs.removeChild(logs.lastChild); }
+
+    // modal helpers
+    function showModal(node){ const root = $('#modalRoot'); root.style.display='block'; root.innerHTML=''; const backdrop = el('div',{className:'modal-backdrop'}); const wrapper = el('div',{className:'modal'}); wrapper.appendChild(node); backdrop.appendChild(wrapper); root.appendChild(backdrop);
+      backdrop.addEventListener('click',(e)=>{ if(e.target===backdrop) closeModal(); });
+    }
+    function closeModal(){ const root = $('#modalRoot'); root.style.display='none'; root.innerHTML=''; }
+
+    // forms
+    function renderConfigForm(d){ const wrap = el('div');
+      wrap.appendChild(el('h3',{innerText:'Configure device'}));
+      const nameLabel = el('label',{innerText:'Device name'}); const nameI = el('input',{value:d.name});
+      const roomLabel = el('label',{innerText:'Room'}); const roomI = el('input',{value:d.room||''});
+      const typeLabel = el('label',{innerText:'Type'}); const typeS = el('select',{},[el('option',{value:'light',innerText:'Light'}),el('option',{value:'thermostat',innerText:'Thermostat'}),el('option',{value:'camera',innerText:'Camera'}),el('option',{value:'switch',innerText:'Switch'})]); typeS.value=d.type;
+      wrap.appendChild(nameLabel); wrap.appendChild(nameI); wrap.appendChild(roomLabel); wrap.appendChild(roomI); wrap.appendChild(typeLabel); wrap.appendChild(typeS);
+      const footer = el('div',{style: 'display:flex;justify-content:flex-end;gap:8px;margin-top:14px'});
+      const cancel = el('button',{className:'btn',innerText:'Cancel'});
+      const saveBtn = el('button',{className:'btn primary',innerText:'Save'});
+      footer.appendChild(cancel); footer.appendChild(saveBtn);
+      wrap.appendChild(footer);
+      cancel.addEventListener('click',closeModal);
+      saveBtn.addEventListener('click',()=>{
+        devices = devices.map(x => x.id===d.id ? ({...x, name:nameI.value, room:roomI.value, type:typeS.value}) : x);
+        save(devices); renderDevices($('#q').value); addLog(`Configured ${d.id}`); closeModal();
+      });
+      return wrap;
+    }
+
+    // add device wizard
+    function renderAddForm(pref={}){
+      const wrap = el('div'); wrap.appendChild(el('h3',{innerText:'Add device'}));
+      const nameLabel = el('label',{innerText:'Name'}); const nameI = el('input',{placeholder:'e.g. Kitchen Light'});
+      const typeLabel = el('label',{innerText:'Type'}); const typeS = el('select',{},[el('option',{value:'light',innerText:'Light'}),el('option',{value:'thermostat',innerText:'Thermostat'}),el('option',{value:'camera',innerText:'Camera'}),el('option',{value:'switch',innerText:'Switch'})]);
+      const roomLabel = el('label',{innerText:'Room'}); const roomI = el('input',{});
+      wrap.appendChild(nameLabel); wrap.appendChild(nameI); wrap.appendChild(typeLabel); wrap.appendChild(typeS); wrap.appendChild(roomLabel); wrap.appendChild(roomI);
+
+      const adv = el('div',{style:'margin-top:10px'},[]);
+      adv.appendChild(el('div',{className:'muted',innerText:'Advanced: initial on-state & metric seed'}));
+      const onChk = el('input',{type:'checkbox'}); const onWrap = el('label',{},[onChk, el('span',{innerText:' Start ON', style:'margin-left:8px'})]);
+      const seedLabel = el('label',{innerText:'Metric seed (min-max)'}); const seedI = el('input',{placeholder:'10-90'});
+      adv.appendChild(onWrap); adv.appendChild(seedLabel); adv.appendChild(seedI);
+      wrap.appendChild(adv);
+
+      const footer = el('div',{style: 'display:flex;justify-content:flex-end;gap:8px;margin-top:14px'});
+      const cancel = el('button',{className:'btn',innerText:'Cancel'});
+      const saveBtn = el('button',{className:'btn primary',innerText:'Create'});
+      footer.appendChild(cancel); footer.appendChild(saveBtn);
+      wrap.appendChild(footer);
+      cancel.addEventListener('click',closeModal);
+      saveBtn.addEventListener('click',()=>{
+        const seed = (seedI.value||'').split('-').map(s=>parseFloat(s)).filter(Boolean);
+        const metrics = seed.length===2 ? randSeries(seed[0],seed[1]) : randSeries();
+        const dd = {id:'dev-'+uid(4), name: nameI.value || ('Device '+Math.floor(Math.random()*99)), type: typeS.value, room: roomI.value, on: onChk.checked, logs:[], metrics};
+        addDevice(dd); closeModal();
+      });
+      return wrap;
+    }
+
+    // glue: UI bindings
+    document.getElementById('addGlobalBtn').addEventListener('click',()=> showModal(renderAddForm()));
+    document.getElementById('exportBtn').addEventListener('click',()=>{ const d = JSON.stringify(devices,null,2); const blob=new Blob([d],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='iot-devices.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
+
+    $('#q').addEventListener('input', (e)=> renderDevices(e.target.value));
+    $('#clearQ').addEventListener('click', ()=>{ $('#q').value=''; renderDevices(''); });
+    $('#filterAll').addEventListener('click', ()=> renderDevices(''));
+    $('#filterOn').addEventListener('click', ()=> renderDevices('on'));
+    $('#filterOff').addEventListener('click', ()=> renderDevices('off'));
+    $('#allOn').addEventListener('click', ()=>{ devices = devices.map(d=>({...d,on:true})); save(devices); renderDevices($('#q').value); addLog('All devices turned on'); });
+    $('#allOff').addEventListener('click', ()=>{ devices = devices.map(d=>({...d,on:false})); save(devices); renderDevices($('#q').value); addLog('All devices turned off'); });
+
+    $('#presetLight').addEventListener('click', ()=> showModal(renderAddForm({type:'light'})) );
+    $('#presetTherm').addEventListener('click', ()=> showModal(renderAddForm({type:'thermostat'})) );
+
+    // console
+    $('#sendCmd').addEventListener('click', ()=>{ const c = $('#cmdInput').value.trim(); if(!c) return; devices.forEach(d=>{ d.logs = [...(d.logs||[]), {ts:Date.now(), msg:`cmd: ${c}`}]; }); addLog('Sent command: '+c); $('#consoleOut').prepend(document.createElement('div')).firstChild.innerText = `[${new Date().toLocaleTimeString()}] ${c}`; save(devices); });
+    $('#sendPing').addEventListener('click', ()=>{ devices.forEach(d=>d.logs=[...(d.logs||[]),{ts:Date.now(),msg:'ping'}]); addLog('Pinged all devices'); save(devices); });
+
+    // presets
+    $('#addGlobalBtn').addEventListener('contextmenu', (e)=>{ e.preventDefault(); showModal(el('div',{},[el('h3',{innerText:'Quick Add'},[]), el('div',{innerText:'Right-click quick add menu - not implemented in demo'})])); });
+
+    // load initial
+    renderDevices('');
+
+    // lightweight simulator: every 10s pick device and update metrics/logs
+    setInterval(()=>{
+      if(devices.length===0) return;
+      const i = Math.floor(Math.random()*devices.length); const d = devices[i];
+      // mutate metrics
+      const last = (d.metrics && d.metrics[d.metrics.length-1]) || 50; const next = Math.max(0, Math.min(100, last + (Math.random()-0.5)*12)); d.metrics = [...(d.metrics||[]).slice(-26), Math.round(next)];
+      d.logs = [...(d.logs||[]), {ts:Date.now(), msg: 'auto-metric '+Math.round(next)}];
+      save(devices); renderDevices($('#q').value);
+      addLog(`Auto update ${d.name}`);
+    }, 10000);
+
+    // helper: remove device with confirm popup
+    window.removeDevice = removeDevice;
+
+    // simple import on paste (developer trick): paste JSON to import
+    window.addEventListener('paste', (e)=>{
+      try{
+        const txt = (e.clipboardData||window.clipboardData).getData('text'); const obj = JSON.parse(txt); if(Array.isArray(obj)) { devices = obj; save(devices); renderDevices(''); addLog('Imported devices from clipboard'); }
+      }catch(err){}
+    });
+
+    // keyboard: N to create
+    window.addEventListener('keydown',(e)=>{ if(e.key.toLowerCase()==='n'){ showModal(renderAddForm()); } });
+
+    // small helper to keep canvas sparks updated if metrics changed
+    const observer = new MutationObserver(()=>{ document.querySelectorAll('.spark canvas').forEach(c=>{ const id = c.closest('.device').dataset.id; const d = devices.find(x=>x.id===id); if(d) drawSpark(c, d.metrics||[]); }); });
+    observer.observe($('#devices'),{childList:true,subtree:true});
+
+  </script>
+</body>
+</html>
