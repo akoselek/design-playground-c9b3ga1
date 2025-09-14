@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dark Rally-Style IoT Dashboard</title>
+  <style>
+    :root {
+      /* Rally-inspired dark palette */
+      --bg: #1E1B1A; /* charcoal / almost black */
+      --surface: #2D2A29; /* slightly lighter for panels */
+      --on-surface: #E8E2DF; /* light text */
+      --muted: #B8AB9B; /* softer text */
+      --accent: #FFA000; /* golden accent */
+      --accent-2: #FF8F00; /* warm secondary accent */
+      --danger: #E53935; /* error / removal color */
+      --shadow: 0 8px 24px rgba(0,0,0,0.8);
+      --radius: 12px;
+      --ui: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 28px; font-family: var(--ui); color: var(--on-surface); background: var(--bg); }
+    
+    .app {
+      display: grid;
+      grid-template-columns: 320px 1fr 360px;
+      gap: 24px;
+      align-items: start;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    header.app-header {
+      grid-column: 1 / -1;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      margin-bottom: 6px;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .logo {
+      width: 46px; height: 46px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: flex; align-items: center; justify-content: center;
+      color: var(--surface); font-weight: 700; font-size: 18px;
+    }
+    h1 { font-size: 18px; margin: 0; color: var(--on-surface); }
+    .sub { font-size: 12px; color: var(--muted); }
+
+    .sidebar .card { padding: 16px; }
+    .btn {
+      background: transparent;
+      border: 1px solid rgba(232, 226, 223, 0.2);
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--on-surface);
+    }
+    .btn.primary {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: var(--surface);
+      border: 0;
+    }
+    .small { font-size: 12px; padding: 6px 10px; border-radius: 8px; }
+    .muted { color: var(--muted); font-size: 13px; }
+
+    .search { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+    .search input {
+      flex: 1; padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(232, 226, 223, 0.2);
+      background: #3C3837;
+      color: var(--on-surface);
+    }
+    .search input::placeholder { color: var(--muted); }
+
+    .devices-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .device {
+      padding: 16px;
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .18s ease, box-shadow .18s ease;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: #383432;
+    }
+    .device:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.8);
+    }
+    .device .title {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    }
+    .device .meta { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .device .big {
+      font-weight: 700; font-size: 20px; margin-top: 10px; color: var(--on-surface);
+    }
+
+    .power { display: inline-flex; align-items: center; gap: 8px; }
+    .toggle {
+      width: 44px; height: 26px; border-radius: 999px;
+      background: #55504E;
+      padding: 3px; display: flex; align-items: center; cursor: pointer;
+    }
+    .knob {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--on-surface);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+      transition: transform .18s cubic-bezier(.2,.9,.3,1);
+    }
+    .toggle.on {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    }
+    .toggle.on .knob { transform: translateX(18px); }
+
+    .spark { width: 100%; height: 40px; margin-top: 12px; border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255,160,0,0.2), transparent);
+    }
+
+    .device-footer {
+      display: flex; justify-content: space-between; align-items: center; margin-top: 12px;
+    }
+    .chip {
+      background: rgba(232,226,223,0.1); padding: 6px 8px; border-radius: 999px;
+      font-size: 12px; color: var(--on-surface);
+    }
+
+    .panel-title { display: flex; justify-content: space-between; align-items: center; }
+    .log-list { max-height: 420px; overflow: auto; margin-top: 12px; padding-right: 6px; }
+    .log-item {
+      padding: 8px; border-radius: 8px; margin-bottom: 8px;
+      background: rgba(232,226,223,0.05);
+      font-size: 13px;
+      color: var(--on-surface);
+    }
+
+    #selectedInfo {
+      margin-top: 8px; padding: 10px;
+      border-radius: 10px;
+      background: rgba(232,226,223,0.05);
+      color: var(--on-surface);
+      word-break: break-all;
+    }
+
+    footer.hint { grid-column: 1 / -1; margin-top: 8px; text-align: center; color: var(--muted); font-size: 13px; }
+
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: grid; place-items: center;
+      z-index: 1000;
+    }
+    .modal {
+      width: 680px; background: var(--surface); border-radius: 14px; padding: 18px;
+      color: var(--on-surface);
+    }
+    label {
+      font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px;
+    }
+    input, select, textarea {
+      width: 100%; padding: 10px; border-radius: 10px;
+      border: 1px solid rgba(232,226,223,0.2);
+      background: #3C3837;
+      color: var(--on-surface);
+    }
+
+    @media (max-width: 1100px) {
+      .app { grid-template-columns: 1fr; }
+      .devices-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .devices-grid { grid-template-columns: repeat(1, 1fr); }
+    }
+
+    .overwhelming {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .mini {
+      padding: 6px 8px; border-radius: 999px;
+      background: rgba(232,226,223,0.1);
+      border: 1px solid rgba(232,226,223,0.2);
+      font-size: 12px;
+      color: var(--on-surface);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo">IO</div>
+        <div>
+          <h1>Rally-Style IoT (Dark)</h1>
+          <div class="sub">Add, remove, configure & control devices</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="muted small">Simulated • browser persistence</div>
+        <button class="btn" id="exportBtn">Export JSON</button>
+        <button class="btn primary" id="addGlobalBtn">+ Add Device</button>
+      </div>
+    </header>
+
+    <aside class="sidebar card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:700">Overview</div>
+          <div class="muted">Devices & global controls</div>
+        </div>
+        <div class="overwhelming">
+          <div class="mini">Total: <span id="totalDevices">0</span></div>
+          <div class="mini">Online: <span id="onlineDevices">0</span></div>
+        </div>
+      </div>
+
+      <div class="search">
+        <input id="q" placeholder="Search device..." />
+        <button class="btn small" id="clearQ">Clear</button>
+      </div>
+
+      <div style="margin-top:12px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <button class="btn small" id="filterAll">All</button>
+          <button class="btn small" id="filterOn">On</button>
+          <button class="btn small" id="filterOff">Off</button>
+        </div>
+        <div style="margin-top:10px">
+          <div class="muted">Groups</div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button class="btn small">Lights</button>
+            <button class="btn small">Thermostats</button>
+            <button class="btn small">Cameras</button>
+            <button class="btn small">Other</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div class="muted">Quick Actions</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn" id="allOn">All ON</button>
+          <button class="btn" id="allOff">All OFF</button>
+        </div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:700">Devices</div>
+            <div class="muted">Click, drag, or double-click power</div>
+          </div>
+          <div class="muted small">Tip: Ctrl+N to add device</div>
+        </div>
+
+        <div style="height:12px"></div>
+        <div id="devices" class="devices-grid"></div>
+      </div>
+
+      <div style="height:12px"></div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><strong>Command Console</strong><div class="muted">Broadcast commands quickly</div></div>
+          <div><button class="btn" id="sendPing">Ping All</button></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+          <input id="cmdInput" placeholder="e.g. setBrightness: 60" />
+          <button class="btn primary" id="sendCmd">Send</button>
+        </div>
+        <div id="consoleOut" style="margin-top:12px;max-height:120px;overflow:auto;padding:8px;border-radius:8px;border:1px dashed rgba(232,226,223,0.2);"></div>
+      </div>
+    </main>
+
+    <aside class="card">
+      <div class="panel-title">
+        <div><strong>Activity</strong><div class="muted">Recent events</div></div>
+        <div class="muted small">Live stream</div>
+      </div>
+      <div id="logs" class="log-list"></div>
+
+      <div style="margin-top:12px">
+        <div class="muted">Selected device</div>
+        <div id="selectedInfo">None</div>
+      </div>
+    </aside>
+
+    <footer class="hint">Made with ♥ • Dark Rally Style • State in localStorage</footer>
+  </div>
+
+  <div id="modalRoot" style="display:none"></div>
+
+  <script>
+    /* JS logic same as before, unchanged except possibly minor color adjustments */
+
+    // utilities
+    const uid = (n=6)=>Math.random().toString(36).slice(2,2+n);
+    const $ = sel => document.querySelector(sel);
+    const el = (tag, props={}, children=[])=>{const e=document.createElement(tag);Object.assign(e,props);children.forEach(c=>typeof c==='string'?e.appendChild(document.createTextNode(c)):e.appendChild(c));return e}
+
+    // initial demo devices
+    const demo = [
+      {id:'dev-'+uid(4),name:'Living Room Light',type:'light',room:'Living Room',on:true,brightness:82,logs:[],metrics:randSeries()},
+      {id:'dev-'+uid(4),name:'Hallway Camera',type:'camera',room:'Hallway',on:true,streaming:true,logs:[],metrics:randSeries(18,40)},
+      {id:'dev-'+uid(4),name:'Bedroom Thermostat',type:'thermostat',room:'Bedroom',on:true,temp:22.4,mode:'auto',logs:[],metrics:randSeries(20,26)},
+      {id:'dev-'+uid(4),name:'Garage Door',type:'switch',room:'Garage',on:false,logs:[],metrics:randSeries(0,1)}
+    ];
+
+    function randSeries(min=10, max=90, len=28) {
+      const out = []; let v = (min + max)/2;
+      for(let i=0;i<len;i++){
+        v = Math.max(min, Math.min(max, v + (Math.random() - 0.5)*8));
+        out.push(Math.round(v));
+      }
+      return out;
+    }
+
+    const STORAGE_KEY = 'iot-dark-rally-devices-v1';
+    function load() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : demo;
+      } catch(e) {
+        return demo;
+      }
+    }
+    function save(devs) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(devs));
+    }
+
+    let devices = load();
+    let selected = null;
+
+    function renderCounts() {
+      $('#totalDevices').innerText = devices.length;
+      $('#onlineDevices').innerText = devices.filter(d=>d.on).length;
+    }
+
+    function drawSpark(cnv, data) {
+      const ctx = cnv.getContext('2d');
+      ctx.clearRect(0,0,cnv.width,cnv.height);
+      if(!data || data.length === 0) return;
+      const w = cnv.width, h = cnv.height;
+      const max = Math.max(...data), min = Math.min(...data);
+      ctx.beginPath();
+      data.forEach((v,i)=>{
+        const x = (i/(data.length-1))*(w-6)+3;
+        const y = h - ((v-min)/(max-min || 1))*(h-8) - 4;
+        if(i===0) ctx.moveTo(x,y);
+        else ctx.lineTo(x,y);
+      });
+      ctx.strokeStyle = 'rgba(255,160,0,0.9)'; // accent bright
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0, 'rgba(255,160,0,0.2)');
+      g.addColorStop(1, 'rgba(255,160,0,0)');
+      ctx.fillStyle = g;
+      ctx.fill();
+    }
+
+    function renderDevices(filterQ='') {
+      const container = $('#devices'); container.innerHTML = '';
+      const q = filterQ.trim().toLowerCase();
+      devices.forEach((d, idx) => {
+        if(q && !(d.name.toLowerCase().includes(q) || d.type.toLowerCase().includes(q) || (d.room||'').toLowerCase().includes(q))) return;
+        const card = el('div', { className:'device card', draggable:true });
+        card.dataset.id = d.id;
+
+        // title + toggle
+        const title = el('div', { className:'title' });
+        title.appendChild(el('div', {}, [ el('div', { innerText: d.name }), el('div', { className:'muted', innerText: d.room || d.type }) ] ));
+        const powerWrap = el('div', { className:'power' });
+        const toggle = el('div', { className: 'toggle ' + (d.on?'on':''), title:'Toggle power' });
+        const knob = el('div', { className:'knob' });
+        toggle.appendChild(knob);
+        powerWrap.appendChild(toggle);
+        title.appendChild(powerWrap);
+        card.appendChild(title);
+
+        // big status
+        let statusTxt = '';
+        if (d.type === 'thermostat') statusTxt = (d.temp + '°C');
+        else if (d.type === 'camera') statusTxt = (d.streaming ? 'Streaming' : 'Idle');
+        else if (d.type === 'light') statusTxt = (d.brightness + '%');
+        else statusTxt = (d.on ? 'Active' : 'Inactive');
+
+        card.appendChild(el('div', { className:'big', innerText: statusTxt }));
+        card.appendChild(el('div', { className:'meta', innerText: `${d.type.toUpperCase()} • id: ${d.id}` }));
+
+        // sparkline
+        const sbox = el('div', { className:'spark' });
+        const cnv = el('canvas'); cnv.width = 300; cnv.height = 40;
+        sbox.appendChild(cnv);
+        card.appendChild(sbox);
+        drawSpark(cnv, d.metrics || []);
+
+        // footer
+        const footer = el('div', { className:'device-footer' });
+        footer.appendChild(el('div', { className:'chip', innerText: d.on ? 'ON' : 'OFF' }));
+        const actions = el('div', {}, []);
+        const cfg = el('button', { className:'btn small', innerText:'Configure' });
+        const remove = el('button', { className:'btn small', innerText:'Remove' });
+        actions.appendChild(cfg); actions.appendChild(remove);
+        footer.appendChild(actions);
+        card.appendChild(footer);
+
+        // event bindings
+        toggle.addEventListener('click', () => { toggleDevice(d.id); });
+        cfg.addEventListener('click', () => { openConfig(d.id); });
+        remove.addEventListener('click', () => { removeDevice(d.id); });
+        card.addEventListener('dblclick', () => { toggleDevice(d.id); });
+        card.addEventListener('click', (ev) => { if(ev.target.closest('button')) return; selectDevice(d.id); });
+
+        // drag & drop
+        card.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', d.id); card.style.opacity = 0.6; });
+        card.addEventListener('dragend', (e) => { card.style.opacity = 1; });
+        card.addEventListener('dragover', (e) => { e.preventDefault(); card.style.outline = '2px dashed rgba(255,160,0,0.3)'; });
+        card.addEventListener('dragleave', () => { card.style.outline = 'none'; });
+        card.addEventListener('drop', (e) => {
+          e.preventDefault(); card.style.outline = 'none';
+          const from = e.dataTransfer.getData('text/plain'), to = d.id;
+          reorder(from, to);
+        });
+
+        container.appendChild(card);
+      });
+      renderCounts();
+    }
+
+    function toggleDevice(id) {
+      devices = devices.map(d =>
+        d.id === id
+          ? { ...d, on: !d.on, logs: [...(d.logs || []), { ts: Date.now(), msg: (d.on ? 'powered off' : 'powered on') }] }
+          : d
+      );
+      save(devices); renderDevices($('#q').value); addLog(`Toggled ${id}`); renderCounts(); updateSelected();
+    }
+    function removeDevice(id) {
+      if(!confirm('Remove device? This will erase its logs.')) return;
+      devices = devices.filter(d => d.id !== id);
+      save(devices); renderDevices($('#q').value); addLog(`Removed ${id}`);
+      if(selected === id) selected = null;
+      updateSelected();
+    }
+    function openConfig(id) {
+      const d = devices.find(x => x.id === id);
+      if(!d) return;
+      showModal(renderConfigForm(d));
+    }
+    function addDevice(data) {
+      devices.unshift(data);
+      save(devices); renderDevices($('#q').value); addLog(`Added ${data.id} (${data.name})`);
+    }
+    function reorder(fromId, toId) {
+      const from = devices.findIndex(d => d.id === fromId);
+      const to = devices.findIndex(d => d.id === toId);
+      if(from < 0 || to < 0) return;
+      const [m] = devices.splice(from, 1);
+      devices.splice(to, 0, m);
+      save(devices); renderDevices($('#q').value);
+    }
+
+    function selectDevice(id) {
+      selected = id; updateSelected();
+    }
+    function updateSelected() {
+      const out = $('#selectedInfo');
+      if(!selected) { out.innerHTML = 'None'; return; }
+      const d = devices.find(x => x.id === selected);
+      if(!d) { out.innerHTML = 'None'; return; }
+      out.innerHTML = `<div style="font-weight:700">${d.name}</div><div class="muted" style="margin-top:4px">${d.type} • ${d.room || '—'}</div><div style="margin-top:10px;font-size:12px;white-space:pre-wrap;">${JSON.stringify(d, null, 2)}</div>`;
+    }
+
+    function renderCounts() {
+      $('#totalDevices').innerText = devices.length;
+      $('#onlineDevices').innerText = devices.filter(d => d.on).length;
+    }
+
+    function addLog(txt) {
+      const logs = $('#logs');
+      const li = el('div', { className:'log-item', innerText: `${new Date().toLocaleTimeString()} • ${txt}` });
+      logs.prepend(li);
+      while (logs.childElementCount > 80) logs.removeChild(logs.lastChild);
+    }
+
+    function showModal(node) {
+      const root = $('#modalRoot');
+      root.style.display = 'block'; root.innerHTML = '';
+      const backdrop = el('div', { className:'modal-backdrop' });
+      const wrapper = el('div', { className:'modal' });
+      wrapper.appendChild(node); backdrop.appendChild(wrapper); root.appendChild(backdrop);
+      backdrop.addEventListener('click', (e) => { if(e.target === backdrop) closeModal(); });
+    }
+    function closeModal() {
+      const root = $('#modalRoot');
+      root.style.display = 'none'; root.innerHTML = '';
+    }
+
+    function renderConfigForm(d) {
+      const wrap = el('div');
+      wrap.appendChild(el('h3', { innerText:'Configure device' }));
+      const nameLabel = el('label', { innerText:'Device name' }); const nameI = el('input', { value:d.name });
+      const roomLabel = el('label', { innerText:'Room' }); const roomI = el('input', { value:d.room || '' });
+      const typeLabel = el('label', { innerText:'Type' });
+      const typeS = el('select', {}, [
+        el('option', { value:'light', innerText:'Light' }),
+        el('option', { value:'thermostat', innerText:'Thermostat' }),
+        el('option', { value:'camera', innerText:'Camera' }),
+        el('option', { value:'switch', innerText:'Switch' })
+      ]);
+      typeS.value = d.type;
+      wrap.appendChild(nameLabel); wrap.appendChild(nameI);
+      wrap.appendChild(roomLabel); wrap.appendChild(roomI);
+      wrap.appendChild(typeLabel); wrap.appendChild(typeS);
+
+      const footer = el('div', { style:'display:flex;justify-content:flex-end;gap:8px;margin-top:14px' });
+      const cancel = el('button', { className:'btn', innerText:'Cancel' });
+      const saveBtn = el('button', { className:'btn primary', innerText:'Save' });
+      footer.appendChild(cancel); footer.appendChild(saveBtn);
+      wrap.appendChild(footer);
+
+      cancel.addEventListener('click', closeModal);
+      saveBtn.addEventListener('click', () => {
+        devices = devices.map(x => x.id === d.id ? { ...x, name: nameI.value, room: roomI.value, type: typeS.value } : x);
+        save(devices); renderDevices($('#q').value); addLog(`Configured ${d.id}`); closeModal();
+      });
+
+      return wrap;
+    }
+
+    function renderAddForm(pref = {}) {
+      const wrap = el('div');
+      wrap.appendChild(el('h3', { innerText:'Add device' }));
+      const nameLabel = el('label', { innerText:'Name' }); const nameI = el('input', { placeholder:'e.g. Kitchen Light' });
+      const typeLabel = el('label', { innerText:'Type' }); const typeS = el('select', {}, [
+        el('option', { value:'light', innerText:'Light' }),
+        el('option', { value:'thermostat', innerText:'Thermostat' }),
+        el('option', { value:'camera', innerText:'Camera' }),
+        el('option', { value:'switch', innerText:'Switch' })
+      ]);
+      const roomLabel = el('label', { innerText:'Room' }); const roomI = el('input', {});
+      wrap.appendChild(nameLabel); wrap.appendChild(nameI); wrap.appendChild(typeLabel); wrap.appendChild(typeS); wrap.appendChild(roomLabel); wrap.appendChild(roomI);
+
+      const adv = el('div', { style:'margin-top:10px' });
+      adv.appendChild(el('div', { className:'muted', innerText:'Advanced: initial on-state & metric seed' }));
+      const onChk = el('input', { type:'checkbox' }); const onWrap = el('label', {}, [ onChk, el('span', { innerText:' Start ON', style:'margin-left:8px' }) ]);
+      const seedLabel = el('label', { innerText:'Metric seed (min-max)' }); const seedI = el('input', { placeholder:'10-90' });
+      adv.appendChild(onWrap); adv.appendChild(seedLabel); adv.appendChild(seedI);
+      wrap.appendChild(adv);
+
+      const footer = el('div', { style:'display:flex;justify-content:flex-end;gap:8px;margin-top:14px' });
+      const cancel = el('button', { className:'btn', innerText:'Cancel' });
+      const saveBtn = el('button', { className:'btn primary', innerText:'Create' });
+      footer.appendChild(cancel); footer.appendChild(saveBtn);
+      wrap.appendChild(footer);
+
+      cancel.addEventListener('click', closeModal);
+      saveBtn.addEventListener('click', () => {
+        const seed = (seedI.value || '').split('-').map(s => parseFloat(s)).filter(Boolean);
+        const metrics = seed.length === 2 ? randSeries(seed[0], seed[1]) : randSeries();
+        const dd = { id:'dev-'+uid(4), name: nameI.value || ('Device '+Math.floor(Math.random()*99)), type: typeS.value, room: roomI.value, on: onChk.checked, logs:[], metrics };
+        addDevice(dd); closeModal();
+      });
+
+      return wrap;
+    }
+
+    // UI bindings
+    document.getElementById('addGlobalBtn').addEventListener('click', () => showModal(renderAddForm()));
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const d = JSON.stringify(devices, null, 2);
+      const blob = new Blob([d], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'iot-devices.json';
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    $('#q').addEventListener('input', (e) => renderDevices(e.target.value));
+    $('#clearQ').addEventListener('click', () => { $('#q').value = ''; renderDevices(''); });
+    $('#filterAll').addEventListener('click', () => renderDevices(''));
+    $('#filterOn').addEventListener('click', () => renderDevices('on'));
+    $('#filterOff').addEventListener('click', () => renderDevices('off'));
+    $('#allOn').addEventListener('click', () => { devices = devices.map(d => ({ ...d, on: true })); save(devices); renderDevices($('#q').value); addLog('All devices ON'); });
+    $('#allOff').addEventListener('click', () => { devices = devices.map(d => ({ ...d, on: false })); save(devices); renderDevices($('#q').value); addLog('All devices OFF'); });
+
+    $('#sendCmd').addEventListener('click', () => {
+      const c = $('#cmdInput').value.trim();
+      if (!c) return;
+      devices.forEach(d => { d.logs = [...(d.logs || []), { ts: Date.now(), msg: `cmd: ${c}` }]; });
+      addLog('Sent command: ' + c);
+      $('#consoleOut').prepend(document.createElement('div')).firstChild.innerText = `[${new Date().toLocaleTimeString()}] ${c}`;
+      save(devices);
+    });
+    $('#sendPing').addEventListener('click', () => {
+      devices.forEach(d => { d.logs = [...(d.logs || []), { ts: Date.now(), msg:'ping' }]; });
+      addLog('Pinged all');
+      save(devices);
+    });
+
+    // load and initial render
+    devices = load();
+    renderDevices('');
+    renderCounts();
+
+    // periodic auto updates
+    setInterval(() => {
+      if(devices.length === 0) return;
+      const i = Math.floor(Math.random() * devices.length);
+      const d = devices[i];
+      const last = (d.metrics && d.metrics[d.metrics.length-1]) || 50;
+      const next = Math.max(0, Math.min(100, last + (Math.random() - 0.5) * 12));
+      d.metrics = [...(d.metrics || []).slice(-26), Math.round(next)];
+      d.logs = [...(d.logs || []), { ts: Date.now(), msg: 'auto '+Math.round(next) }];
+      save(devices);
+      renderDevices($('#q').value);
+      addLog(`Auto update ${d.name}`);
+    }, 10000);
+
+    window.addEventListener('keydown', (e) => { if(e.key.toLowerCase() === 'n') showModal(renderAddForm()); });
+    window.addEventListener('paste', (e) => {
+      try {
+        const txt = (e.clipboardData || window.clipboardData).getData('text');
+        const obj = JSON.parse(txt);
+        if(Array.isArray(obj)) { devices = obj; save(obj); renderDevices(''); addLog('Imported devices'); }
+      } catch {}
+    });
+  </script>
+</body>
+</html>
